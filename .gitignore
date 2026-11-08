@@ -1,0 +1,18 @@
+# Executáveis
+*.exe
+*.out
+
+# Arquivos de compilação
+*.o
+*.obj
+
+# Arquivos gerados pelo Flex
+lex.yy.c
+
+# Arquivos gerados pelo Bison
+sintatico.tab.c
+sintatico.tab.h
+*.output
+
+# Diretórios temporários
+build/
