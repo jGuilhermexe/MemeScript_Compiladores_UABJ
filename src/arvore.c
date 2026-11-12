@@ -8,6 +8,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "arvore.h"
+#include "erro.h"
+extern int linha_atual;
 
 
 /* Cria um no vazio do tipo pedido.
@@ -22,13 +24,14 @@ No *novo_no(TipoNo tipo) {
     }
 
     no->tipo = tipo;
+    no->linha = linha_atual;
 
     return no;
 }
 
 
 /* Cria um no que representa um numero inteiro */
-No *criar_numero(int valor) {
+No *criar_numero(long long valor) {
 
     No *no = novo_no(NO_NUMERO);
 
@@ -144,15 +147,6 @@ No *criar_enquanto_tankar(No *condicao, No *bloco) {
 }
 
 
-/* Cria um no para interromper uma repeticao */
-No *criar_passar_reto(void) {
-
-    No *no = novo_no(NO_PASSA_RETO);
-
-    return no;
-}
-
-
 /* Coloca um comando no FINAL da lista de comandos */
 No *adicionar_comando(No *lista, No *comando) {
 
@@ -173,113 +167,46 @@ No *adicionar_comando(No *lista, No *comando) {
 }
 
 
-/* ===================== IMPRESSAO DA ARVORE ===================== */
+/* Os nomes seguem a ordem de TipoNo em arvore.h. */
+static const char *nomes[] = {
+    "LANCEI","HABLA","INTEIRO","REAL","TEXTO","VARIAVEL","SOMA","SUBTRACAO",
+    "MULTIPLICACAO","DIVISAO","ATRIBUICAO","MAIOR","MENOR","IGUAL","DIFERENTE",
+    "MAIOR_IGUAL","MENOR_IGUAL","SE_LIGA","ENQUANTO_TANKAR","PASSA_RETO",
+    "CHEGA","ENTRADA","BOOLEANO","NULO","MODULO","E","OU","NEM","POSITIVO"
+};
 
-
-/* Imprime uma expressao, como numero, variavel ou operacao */
-void imprimir_expressao(No *no) {
-
-    /* Se nao existir expressao, nao ha nada para imprimir */
-    if (no == NULL)
-        return;
-
-    if (no->tipo == NO_NUMERO)
-        printf("    NUMERO %d\n", no->valor);
-
-    else if (no->tipo == NO_REAL)
-        printf("    REAL %.2f\n", no->valor_real);
-
-    else if (no->tipo == NO_TEXTO)
-        printf("    TEXTO %s\n", no->texto);
-
-    else if (no->tipo == NO_VARIAVEL)
-        printf("    VARIAVEL %s\n", no->nome);
-
-    else if (no->tipo == NO_SOMA) {
-        printf("    SOMA\n");
-        imprimir_expressao(no->esquerda);
-        imprimir_expressao(no->direita);
-    }
-
-    else if (no->tipo == NO_SUBTRACAO) {
-        printf("    SUBTRACAO\n");
-        imprimir_expressao(no->esquerda);
-        imprimir_expressao(no->direita);
-    }
-
-    else if (no->tipo == NO_MULTIPLICACAO) {
-        printf("    MULTIPLICACAO\n");
-        imprimir_expressao(no->esquerda);
-        imprimir_expressao(no->direita);
-    }
-
-    else if (no->tipo == NO_DIVISAO) {
-        printf("    DIVISAO\n");
-        imprimir_expressao(no->esquerda);
-        imprimir_expressao(no->direita);
-    }
-
-    else if (no->tipo == NO_MAIOR_QUE ||
-             no->tipo == NO_MENOR_QUE ||
-             no->tipo == NO_IGUAL ||
-             no->tipo == NO_DIFERENTE ||
-             no->tipo == NO_MAIOR_IGUAL ||
-             no->tipo == NO_MENOR_IGUAL) {
-
-        printf("    COMPARACAO\n");
-        imprimir_expressao(no->esquerda);
-        imprimir_expressao(no->direita);
-    }
-
-    else {
-        printf("    EXPRESSAO DESCONHECIDA\n");
+static void mostrar(No *lista, int nivel) {
+    for (No *no = lista; no; no = no->proximo) {
+        printf("%*s%s", nivel * 2, "", nomes[no->tipo]);
+        if (no->nome) printf(" %s", no->nome);
+        if (no->texto) printf(" %s", no->texto);
+        if (no->tipo == NO_NUMERO) printf(" %lld", no->valor);
+        if (no->tipo == NO_REAL) printf(" %g", no->valor_real);
+        if (no->tipo == NO_BOOLEANO) printf(" %s", no->valor ? "tankavel" : "intankavel");
+        printf(" [linha %d]\n", no->linha);
+        mostrar(no->expressao, nivel + 1);
+        mostrar(no->esquerda, nivel + 1);
+        mostrar(no->direita, nivel + 1);
+        mostrar(no->bloco_entao, nivel + 1);
+        mostrar(no->bloco_senao, nivel + 1);
+        mostrar(no->bloco_while, nivel + 1);
     }
 }
 
+void imprimir_arvore(No *programa) { mostrar(programa, 0); }
 
-/* Percorre a lista de comandos e imprime cada um */
-void imprimir_arvore(No *programa) {
-
-    for (No *cmd = programa; cmd != NULL; cmd = cmd->proximo) {
-
-        if (cmd->tipo == NO_LANCEI) {
-            printf("LANCEI %s\n", cmd->nome);
-            imprimir_expressao(cmd->expressao);
-        }
-
-        else if (cmd->tipo == NO_ATRIBUICAO) {
-            printf("ATRIBUICAO %s\n", cmd->nome);
-            imprimir_expressao(cmd->expressao);
-        }
-
-        else if (cmd->tipo == NO_HABLA) {
-            printf("HABLA\n");
-            imprimir_expressao(cmd->expressao);
-        }
-
-        else if (cmd->tipo == NO_SE_LIGA) {
-            printf("SE_LIGA\n");
-            imprimir_expressao(cmd->expressao);
-
-            printf("  BLOCO ENTAO:\n");
-            imprimir_arvore(cmd->bloco_entao);
-
-            if (cmd->bloco_senao != NULL) {
-                printf("  BLOCO SENAO:\n");
-                imprimir_arvore(cmd->bloco_senao);
-            }
-        }
-
-        else if (cmd->tipo == NO_ENQUANTO_TANKAR) {
-            printf("ENQUANTO_TANKAR\n");
-            imprimir_expressao(cmd->expressao);
-
-            printf("  BLOCO:\n");
-            imprimir_arvore(cmd->bloco_while);
-        }
-
-        else if (cmd->tipo == NO_PASSA_RETO) {
-            printf("PASSA_RETO\n");
-        }
+void liberar_arvore(No *lista) {
+    while (lista != NULL) {
+        No *proximo = lista->proximo;
+        liberar_arvore(lista->esquerda);
+        liberar_arvore(lista->direita);
+        liberar_arvore(lista->expressao);
+        liberar_arvore(lista->bloco_entao);
+        liberar_arvore(lista->bloco_senao);
+        liberar_arvore(lista->bloco_while);
+        free(lista->nome);
+        free(lista->texto);
+        free(lista);
+        lista = proximo;
     }
 }

@@ -1,71 +1,29 @@
-/*
- * main.c - Junta as etapas do MemeScript
- *
- * codigo-fonte --(Flex)--> tokens
- *             --(Bison)--> arvore sintatica
- *             --(Interpretador)--> resultado
- */
-
 #include <stdio.h>
+#include <string.h>
 #include "arvore.h"
 
-/* Arquivo que o Flex vai ler */
-extern FILE *yyin;
-
-/* Arvore construida pelo analisador sintatico */
 extern No *raiz;
-
-/* Funcao gerada pelo Bison */
 int yyparse(void);
+void abrir_fonte(FILE *arquivo);
+void mostrar_tokens(void);
+void interpretar(No *programa);
 
-int main(int argc, char *argv[]) {
-
-    /* Verifica se o usuario informou um arquivo */
-    if (argc < 2) {
-        printf("Uso: %s arquivo.ms\n", argv[0]);
-        return 1;
+int main(int argc, char **argv) {
+    const char *modo = argc == 3 ? argv[1] : "";
+    if ((argc != 2 && argc != 3) || (argc == 3 && strcmp(modo,"--ast") && strcmp(modo,"--tokens"))) {
+        fprintf(stderr,"Uso: %s [--tokens|--ast] arquivo.ms\n",argv[0]);
+        return 2;
     }
-
-    /* Abre o arquivo com o codigo MemeScript */
-    yyin = fopen(argv[1], "r");
-
-    if (yyin == NULL) {
-        printf("Nao foi possivel abrir %s\n", argv[1]);
-        return 1;
+    FILE *arquivo = fopen(argv[argc-1],"r");
+    if (!arquivo) { perror(argv[argc-1]); return 1; }
+    abrir_fonte(arquivo);
+    if (strcmp(modo,"--tokens") == 0) mostrar_tokens();
+    else {
+        if (yyparse() != 0) return 1;
+        if (strcmp(modo,"--ast") == 0) imprimir_arvore(raiz);
+        else interpretar(raiz);
+        liberar_arvore(raiz);
     }
-
-    /*
-     * Etapas 1 e 2: analise lexica e sintatica.
-     *
-     * O yyparse() solicita tokens ao Flex e verifica
-     * se eles seguem as regras da gramatica.
-     *
-     * Ao final, a arvore fica armazenada em "raiz".
-     */
-    if (yyparse() != 0) {
-        fclose(yyin);
-        return 1;
-    }
-
-    fclose(yyin);
-
-    /* Exibe a arvore sintatica construida */
-    printf("\n===== ARVORE SINTATICA =====\n");
-
-    if (raiz != NULL) {
-        imprimir_arvore(raiz);
-    } else {
-        printf("Programa vazio.\n");
-    }
-
-    /*
-     * Etapa 3: interpretacao.
-     *
-     * Quando o interpretador estiver implementado,
-     * descomente a chamada abaixo:
-     *
-     * interpretar(raiz);
-     */
-
+    fclose(arquivo);
     return 0;
 }
