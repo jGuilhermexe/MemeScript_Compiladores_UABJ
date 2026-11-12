@@ -42,7 +42,8 @@ typedef enum {
 
     NO_SE_LIGA,         // Condicional
     NO_ENQUANTO_TANKAR, // Repeticao
-    NO_PASSA_RETO       // Interrupcao de repeticao
+    NO_PASSA_RETO, NO_CHEGA, NO_ENTRADA, NO_BOOLEANO, NO_NULO,
+    NO_MODULO, NO_E, NO_OU, NO_NEM, NO_POSITIVO
 
 } TipoNo;
 
@@ -52,7 +53,8 @@ typedef enum {
 typedef struct No {
     TipoNo tipo;            // Identifica o tipo do no
 
-    int valor;              // Guarda numeros inteiros
+    int linha;              // Linha do código-fonte
+    long long valor;              // Guarda numeros inteiros
     double valor_real;      // Guarda numeros decimais
 
     char *nome;             // Guarda nomes de variaveis
@@ -74,7 +76,7 @@ typedef struct No {
 /* Funcoes para criar os nos da arvore */
 No *novo_no(TipoNo tipo);
 
-No *criar_numero(int valor);
+No *criar_numero(long long valor);
 No *criar_real(double valor);
 No *criar_texto(char *texto);
 No *criar_variavel(char *nome);
@@ -87,13 +89,13 @@ No *criar_habla(No *expressao);
 
 No *criar_se_liga(No *condicao, No *bloco_entao, No *bloco_senao);
 No *criar_enquanto_tankar(No *condicao, No *bloco);
-No *criar_passar_reto(void);
+
 
 /* Adiciona um comando ao final da lista */
 No *adicionar_comando(No *lista, No *comando);
 
 /* Funcoes para imprimir a arvore */
-void imprimir_expressao(No *no);
+void liberar_arvore(No *programa);
 void imprimir_arvore(No *programa);
 
 #endif

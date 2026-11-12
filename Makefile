@@ -1,12 +1,15 @@
-# Ordem: Bison gera o parser e o arquivo .h com os tokens
-# -> Flex gera o analisador lexico
-# -> GCC compila todos os arquivos
+CC = gcc
+CFLAGS = -std=gnu11 -Wall -Wextra -Isrc -I.
+FONTES = src/main.c src/arvore.c src/interpretador.c src/tabela_simbolos.c src/erro.c
 
-memescript: src/sintatico.y src/lexico.l src/arvore.c src/interpretador.c src/main.c
-	bison -d -o sintatico.tab.c src/sintatico.y
+memescript: src/sintatico.y src/lexico.l $(FONTES) $(wildcard src/*.h)
+	bison -Wall -Werror=conflicts-sr -Werror=conflicts-rr -d -o sintatico.tab.c src/sintatico.y
 	flex -o lex.yy.c src/lexico.l
-	gcc -Wall -Wextra -o memescript sintatico.tab.c lex.yy.c src/arvore.c src/interpretador.c src/main.c
+	$(CC) $(CFLAGS) -o $@ sintatico.tab.c lex.yy.c $(FONTES)
 
-# Remove os arquivos gerados durante a compilacao
+test: memescript
+	python3 testes/verificar.py
+
 clean:
 	rm -f memescript memescript.exe sintatico.tab.c sintatico.tab.h lex.yy.c
+.PHONY: clean test
