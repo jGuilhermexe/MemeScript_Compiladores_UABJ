@@ -6,7 +6,13 @@
 #include <stdlib.h>
 #include <string.h>
 
-/* Expressões produzem valores. Comandos alteram variáveis ou controlam o fluxo. */
+typedef enum { NORMAL, PARAR, PROXIMA_ITERACAO, RETORNAR } Fluxo;
+
+static Valor valor_retorno;
+static Valor avaliar(No *no);
+static Fluxo executar_bloco(No *lista);
+
+/* Expressoes produzem valores; comandos alteram variaveis ou controlam fluxo */
 static Valor booleano(int verdadeiro) {
     return (Valor){.tipo=BOOLEANO_MS, .inteiro=verdadeiro};
 }
@@ -32,7 +38,7 @@ static Valor operar(No *no, Valor a, Valor b) {
         int iguais = 0;
         if (a.tipo == NULO_MS || b.tipo == NULO_MS) iguais = a.tipo == b.tipo;
         else if (numerico(a) && numerico(b)) iguais = numero(a,linha) == numero(b,linha);
-        else if (a.tipo != b.tipo) erro("semântico",linha,"tipos incompatíveis na comparação");
+        else if (a.tipo != b.tipo || a.tipo == LISTA_MS) erro("semântico",linha,"tipos incompatíveis na comparação");
         else if (a.tipo == TEXTO_MS) iguais = strcmp(a.texto,b.texto) == 0;
         else iguais = a.inteiro == b.inteiro;
         return booleano(op == NO_IGUAL ? iguais : !iguais);
@@ -75,6 +81,32 @@ static Valor operar(No *no, Valor a, Valor b) {
     if (excedeu) erro("de execução",linha,"inteiro fora do intervalo");
     return (Valor){.tipo=INTEIRO_MS,.inteiro=resultado};
 }
+static Valor chamar_funcao(No *no) {
+    No *funcao = buscar_funcao(no->nome,no->linha);
+    int qtd_params = 0;
+    for (No *p = funcao->parametros; p; p = p->proximo) qtd_params++;
+    int qtd_args = 0;
+    for (No *a = no->expressao; a; a = a->proximo) qtd_args++;
+    if (qtd_params != qtd_args)
+        erro("semântico",no->linha,"quantidade incorreta de argumentos");
+
+    Valor *args = qtd_args > 0 ? alocar(qtd_args * sizeof(Valor)) : NULL;
+    int i = 0;
+    for (No *a = no->expressao; a; a = a->proximo) {
+        args[i++] = avaliar(a);
+    }
+    entrar_escopo(funcao,args,qtd_args,no->linha);
+    free(args);
+
+    Valor retorno_anterior = valor_retorno;
+    valor_retorno = (Valor){.tipo=NULO_MS};
+    Fluxo fluxo = executar_bloco(funcao->bloco_entao);
+    Valor resultado = (fluxo == RETORNAR) ? valor_retorno : (Valor){.tipo=NULO_MS};
+    valor_retorno = retorno_anterior;
+
+    sair_escopo();
+    return resultado;
+}
 static Valor avaliar(No *no) {
     switch (no->tipo) {
         case NO_NUMERO: return (Valor){.tipo=INTEIRO_MS,.inteiro=no->valor};
@@ -83,6 +115,17 @@ static Valor avaliar(No *no) {
         case NO_NULO: return (Valor){.tipo=NULO_MS};
         case NO_TEXTO: return (Valor){.tipo=TEXTO_MS,.texto=copiar_texto(no->texto)};
         case NO_VARIAVEL: return consultar(no->nome,no->linha);
+        case NO_CHAMADA: return chamar_funcao(no);
+        case NO_LISTA: {
+            int qtd = 0;
+            for (No *item = no->expressao; item; item = item->proximo) qtd++;
+            Valor *itens = qtd > 0 ? alocar(qtd * sizeof(Valor)) : NULL;
+            int i = 0;
+            for (No *item = no->expressao; item; item = item->proximo) {
+                itens[i++] = avaliar(item);
+            }
+            return (Valor){.tipo=LISTA_MS,.itens=itens,.tamanho=qtd};
+        }
         case NO_ENTRADA: {
             char *texto = NULL;
             size_t tamanho = 0;
@@ -103,8 +146,8 @@ static Valor avaliar(No *no) {
     }
     Valor b = avaliar(no->direita);
     Valor resultado = operar(no,a,b);
-    free(a.texto);
-    free(b.texto);
+    liberar_valor(&a);
+    liberar_valor(&b);
     return resultado;
 }
 static void exibir(Valor valor) {
@@ -114,29 +157,54 @@ static void exibir(Valor valor) {
         case TEXTO_MS: printf("%s",valor.texto); break;
         case BOOLEANO_MS: printf("%s",valor.inteiro ? "tankavel" : "intankavel"); break;
         case NULO_MS: printf("nulo"); break;
+        case LISTA_MS:
+            putchar('|');
+            for (int i = 0; i < valor.tamanho; i++) {
+                if (i > 0) printf(", ");
+                exibir(valor.itens[i]);
+            }
+            putchar('|');
+            break;
     }
 }
-static void validar_desvios(No *lista, int em_laco) {
+static void validar_desvios(No *lista, int em_laco, int em_funcao, int em_bloco) {
     for (No *no = lista; no; no = no->proximo) {
         if (!em_laco && no->tipo == NO_CHEGA) erro("semântico",no->linha,"chega exige um laço");
         if (!em_laco && no->tipo == NO_PASSA_RETO) erro("semântico",no->linha,"passa_reto exige um laço");
-        validar_desvios(no->bloco_entao,em_laco);
-        validar_desvios(no->bloco_senao,em_laco);
-        validar_desvios(no->bloco_while,1);
+        if (!em_funcao && no->tipo == NO_DEVOLVE) erro("semântico",no->linha,"devolve exige uma função");
+        if (em_bloco && no->tipo == NO_RECEITA) erro("semântico",no->linha,"receita só pode ser declarada no nível principal");
+        if (no->tipo == NO_RECEITA) {
+            validar_desvios(no->bloco_entao,0,1,1);
+        } else if (no->tipo == NO_ENQUANTO_TANKAR || no->tipo == NO_PARA_CADA) {
+            validar_desvios(no->bloco_while,1,em_funcao,1);
+        } else {
+            validar_desvios(no->bloco_entao,em_laco,em_funcao,1);
+            validar_desvios(no->bloco_senao,em_laco,em_funcao,1);
+        }
     }
 }
-typedef enum { NORMAL, PARAR, PROXIMA_ITERACAO } Fluxo;
 
 static Fluxo executar_bloco(No *lista) {
     for (No *no = lista; no; no = no->proximo) {
         switch (no->tipo) {
+            case NO_RECEITA:
+                registrar_funcao(no);
+                break;
             case NO_LANCEI:
             case NO_ATRIBUICAO:
                 guardar(no->nome,avaliar(no->expressao),no->tipo == NO_LANCEI,no->linha);
                 break;
+            case NO_CHAMADA: {
+                Valor res = chamar_funcao(no);
+                liberar_valor(&res);
+                break;
+            }
+            case NO_DEVOLVE:
+                valor_retorno = no->expressao ? avaliar(no->expressao) : (Valor){.tipo=NULO_MS};
+                return RETORNAR;
             case NO_ENTRADA: {
                 Valor lido = avaliar(no);
-                free(lido.texto);
+                liberar_valor(&lido);
                 break;
             }
             case NO_HABLA:
@@ -144,7 +212,7 @@ static Fluxo executar_bloco(No *lista) {
                     Valor valor = avaliar(item);
                     if (item != no->expressao) putchar(' ');
                     exibir(valor);
-                    free(valor.texto);
+                    liberar_valor(&valor);
                 }
                 putchar('\n');
                 break;
@@ -156,9 +224,29 @@ static Fluxo executar_bloco(No *lista) {
             }
             case NO_ENQUANTO_TANKAR:
                 while (exigir_booleano(avaliar(no->expressao),no->linha)) {
-                    if (executar_bloco(no->bloco_while) == PARAR) break;
+                    Fluxo fluxo = executar_bloco(no->bloco_while);
+                    if (fluxo == PARAR) break;
+                    if (fluxo == RETORNAR) return RETORNAR;
                 }
                 break;
+            case NO_PARA_CADA: {
+                Valor lista = avaliar(no->expressao);
+                if (lista.tipo != LISTA_MS) {
+                    liberar_valor(&lista);
+                    erro("semântico",no->linha,"para_cada exige uma lista");
+                }
+                for (int i = 0; i < lista.tamanho; i++) {
+                    guardar(no->nome,copiar_valor(lista.itens[i]),1,no->linha);
+                    Fluxo fluxo = executar_bloco(no->bloco_while);
+                    if (fluxo == PARAR) break;
+                    if (fluxo == RETORNAR) {
+                        liberar_valor(&lista);
+                        return RETORNAR;
+                    }
+                }
+                liberar_valor(&lista);
+                break;
+            }
             case NO_CHEGA: return PARAR;
             case NO_PASSA_RETO: return PROXIMA_ITERACAO;
             default: erro("interno",no->linha,"comando desconhecido");
@@ -167,7 +255,7 @@ static Fluxo executar_bloco(No *lista) {
     return NORMAL;
 }
 void interpretar(No *raiz) {
-    validar_desvios(raiz,0);
+    validar_desvios(raiz,0,0,0);
     executar_bloco(raiz);
     limpar_tabela();
 }

@@ -1,0 +1,49 @@
+diff --git a/src/interpretador.c b/src/interpretador.c
+index 8e547cd..e167880 100644
+--- a/src/interpretador.c
++++ b/src/interpretador.c
+@@ -12,7 +12,7 @@ static Valor valor_retorno;
+ static Valor avaliar(No *no);
+ static Fluxo executar_bloco(No *lista);
+ 
+-/* Expressões produzem valores. Comandos alteram variáveis ou controlam o fluxo. */
++/* Expressoes produzem valores; comandos alteram variaveis ou controlam fluxo */
+ static Valor booleano(int verdadeiro) {
+     return (Valor){.tipo=BOOLEANO_MS, .inteiro=verdadeiro};
+ }
+@@ -258,4 +258,4 @@ void interpretar(No *raiz) {
+     validar_desvios(raiz,0,0,0);
+     executar_bloco(raiz);
+     limpar_tabela();
+-}
++}
+\ No newline at end of file
+diff --git a/src/tabela_simbolos.c b/src/tabela_simbolos.c
+index 4bb3250..76bc129 100644
+--- a/src/tabela_simbolos.c
++++ b/src/tabela_simbolos.c
+@@ -5,7 +5,7 @@
+ #include <string.h>
+ #include <stdio.h>
+ 
+-/* Cada célula guarda o nome, o valor atual e o caminho até a próxima variável. */
++/* Cada celula guarda nome, valor e proxima variavel */
+ typedef struct Variavel {
+     const char *nome;
+     Valor valor;
+@@ -71,7 +71,7 @@ void liberar_valor(Valor *valor) {
+     }
+ }
+ 
+-/* Antes de rodar uma receita, marca quais nomes serão locais (lancei e para_cada). */
++/* Marca variaveis locais antes de executar receita */
+ static void marcar_locais(No *lista, Escopo *escopo) {
+     for (No *no = lista; no; no = no->proximo) {
+         if ((no->tipo == NO_LANCEI || no->tipo == NO_PARA_CADA) &&
+@@ -207,4 +207,4 @@ void limpar_tabela(void) {
+         funcoes = atual->proxima;
+         free(atual);
+     }
+-}
++}
+\ No newline at end of file
