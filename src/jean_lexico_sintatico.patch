@@ -1,0 +1,87 @@
+diff --git a/src/lexico.l b/src/lexico.l
+index f1a6c71..3455c4d 100644
+--- a/src/lexico.l
++++ b/src/lexico.l
+@@ -63,7 +63,7 @@ static size_t capacidade;
+ 
+ void abrir_fonte(FILE *arquivo) { fonte = arquivo; }
+ 
+-/* Cada linha com código gera NEWLINE. Só essas linhas mudam a indentação. */
++/* Cada linha de codigo gera NEWLINE; altera indentacao */
+ static void preparar_linha(void) {
+     static int inicio_comentario;
+     while (getline(&linha,&capacidade,fonte) >= 0) {
+@@ -120,4 +120,4 @@ void mostrar_tokens(void) {
+         if (token == IDENTIFICADOR || token == TEXTO) free(yylval.texto);
+     }
+     puts("EOF");
+-}
++}
+\ No newline at end of file
+diff --git a/src/sintatico.y b/src/sintatico.y
+index c784f5f..f0d1cdb 100644
+--- a/src/sintatico.y
++++ b/src/sintatico.y
+@@ -1,9 +1,4 @@
+-/*
+- * sintatico.y - ANALISADOR SINTATICO (Bison)
+- *
+- * Funcao: receber os tokens do Flex, verificar se estao
+- * na ordem correta e construir a arvore sintatica (AST).
+- */
++/* sintatico.y - Analisador sintatico (Bison) */
+ 
+ %{
+ #include <stdio.h>
+@@ -14,15 +9,14 @@ int yylex(void);
+ #include "erro.h"
+ extern int linha_atual;
+ 
+-/* Chamada automaticamente quando ocorre um erro sintatico */
+ void yyerror(const char *mensagem) {
+     erro("sintático", linha_atual, mensagem);
+ }
+ 
+-No *raiz = NULL;   /* Arvore completa do programa */
++No *raiz = NULL;
+ %}
+ 
+-/* Valores que os tokens e regras podem carregar */
++/* Valores que tokens e regras podem carregar */
+ %locations
+ %define parse.error detailed
+ %union {
+@@ -45,7 +39,7 @@ No *raiz = NULL;   /* Arvore completa do programa */
+ /* Tokens de indentacao */
+ %token NEWLINE INDENT DEDENT
+ 
+-/* Tokens que carregam valores */
++/* Tokens com valores */
+ %token <inteiro> INTEIRO
+ %token <real> REAL
+ %token <texto> TEXTO IDENTIFICADOR
+@@ -140,13 +134,13 @@ comandos_bloco
+     | comandos_bloco comando        { $$ = adicionar_comando($1, $2); }
+     ;
+ 
+-/* Bloco definido pela indentacao de quatro espacos */
++/* Bloco por indentacao de 4 espacos */
+ bloco
+     : NEWLINE INDENT comandos_bloco DEDENT
+                                     { $$ = $3; }
+     ;
+ 
+-/* Partes opcionais da estrutura condicional */
++/* Partes opcionais de estrutura condicional */
+ cauda_condicional
+     : %empty                        { $$ = NULL; }
+ 
+@@ -195,7 +189,7 @@ expressao
+                                     { $$ = criar_operacao(NO_MENOR_IGUAL, $1, $3); }
+     ;
+ 
+-/* Expressoes: numeros, textos, variaveis e operacoes */
++/* Expressoes: numeros, textos, variaveis, operacoes */
+ expressao_base
+     : ENTRADA ABRE_PARENTESES FECHA_PARENTESES { $$ = novo_no(NO_ENTRADA); }
+     | VERDADE                       { $$ = novo_no(NO_BOOLEANO); $$->valor = 1; }

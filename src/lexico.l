@@ -26,7 +26,10 @@ static FILE *fonte;
 "ou_entao"      return OU;
 "chega"         return CHEGA;
 "passa_reto"    return PASSA;
-"receita"|"devolve"|"para_cada"|"em" return RESERVADA;
+"receita"       return RECEITA;
+"devolve"       return DEVOLVE;
+"para_cada"     return PARA_CADA;
+"em"            return EM;
 "=="|"eh_engual" return IGUAL;
 "!="|"nada_a_ver" return DIFERENTE;
 ">="            return MAIOR_IGUAL;
@@ -43,7 +46,7 @@ static FILE *fonte;
 ","             return VIRGULA;
 "("             return ABRE_PARENTESES;
 ")"             return FECHA_PARENTESES;
-"|"             return RESERVADA;
+"|"             return BARRA;
 [0-9]+          { errno=0; yylval.inteiro=strtoll(yytext,NULL,10); if(errno) erro("de execução",linha_atual,"inteiro fora do intervalo"); return INTEIRO; }
 [0-9]+\.[0-9]+  { errno=0; yylval.real=strtod(yytext,NULL); if(errno) erro("de execução",linha_atual,"real fora do intervalo"); return REAL; }
 [A-Za-z_][A-Za-z0-9_]* { yylval.texto=copiar_texto(yytext); return IDENTIFICADOR; }
@@ -60,7 +63,7 @@ static size_t capacidade;
 
 void abrir_fonte(FILE *arquivo) { fonte = arquivo; }
 
-/* Cada linha com código gera NEWLINE. Só essas linhas mudam a indentação. */
+/* Cada linha de codigo gera NEWLINE; altera indentacao */
 static void preparar_linha(void) {
     static int inicio_comentario;
     while (getline(&linha,&capacidade,fonte) >= 0) {
