@@ -47,10 +47,29 @@ static FILE *fonte;
 "("             return ABRE_PARENTESES;
 ")"             return FECHA_PARENTESES;
 "|"             return BARRA;
-[0-9]+          { errno=0; yylval.inteiro=strtoll(yytext,NULL,10); if(errno) erro("de execução",linha_atual,"inteiro fora do intervalo"); return INTEIRO; }
-[0-9]+\.[0-9]+  { errno=0; yylval.real=strtod(yytext,NULL); if(errno) erro("de execução",linha_atual,"real fora do intervalo"); return REAL; }
-[A-Za-z_][A-Za-z0-9_]* { yylval.texto=copiar_texto(yytext); return IDENTIFICADOR; }
-"@@"([^@\n]|"@"[^@\n])*"@@" { yytext[yyleng-2]=0; yylval.texto=copiar_texto(yytext+2); yytext[yyleng-2]='@'; return TEXTO; }
+[0-9]+ {
+    errno = 0;
+    yylval.inteiro = strtoll(yytext, NULL, 10);
+    if (errno) erro("de execução", linha_atual, "inteiro fora do intervalo");
+    return INTEIRO;
+}
+[0-9]+\.[0-9]+ {
+    errno = 0;
+    yylval.real = strtod(yytext, NULL);
+    if (errno) erro("de execução", linha_atual, "real fora do intervalo");
+    return REAL;
+}
+[A-Za-z_][A-Za-z0-9_]* {
+    yylval.texto = copiar_texto(yytext);
+    return IDENTIFICADOR;
+}
+"@@"([^@\n]|"@"[^@\n])*"@@" {
+    /* Copia apenas o conteúdo entre os dois delimitadores. */
+    yytext[yyleng - 2] = 0;
+    yylval.texto = copiar_texto(yytext + 2);
+    yytext[yyleng - 2] = '@';
+    return TEXTO;
+}
 "@@"            erro("léxico",linha_atual,"texto sem @@ de fechamento");
 "!EXPOSED!".*   ;
 [ \t]+          ;
@@ -63,7 +82,7 @@ static size_t capacidade;
 
 void abrir_fonte(FILE *arquivo) { fonte = arquivo; }
 
-/* Cada linha de codigo gera NEWLINE; altera indentacao */
+/* Cada linha com código gera NEWLINE. Só essas linhas mudam a indentação. */
 static void preparar_linha(void) {
     static int inicio_comentario;
     while (getline(&linha,&capacidade,fonte) >= 0) {

@@ -43,7 +43,8 @@ typedef enum {
     NO_SE_LIGA,         // Condicional
     NO_ENQUANTO_TANKAR, // Repeticao
     NO_PASSA_RETO, NO_CHEGA, NO_ENTRADA, NO_BOOLEANO, NO_NULO,
-    NO_MODULO, NO_E, NO_OU, NO_NEM, NO_POSITIVO
+    NO_MODULO, NO_E, NO_OU, NO_NEM, NO_POSITIVO,
+    NO_RECEITA, NO_CHAMADA, NO_DEVOLVE, NO_LISTA, NO_PARA_CADA
 
 } TipoNo;
 
@@ -66,9 +67,8 @@ typedef struct No {
     struct No *esquerda;    // Filho esquerdo de uma operacao
     struct No *direita;     // Filho direito de uma operacao
 
-    struct No *bloco_entao; // Comandos executados se a condicao for verdadeira
+    struct No *bloco_principal; // Corpo do laço ou ramo verdadeiro
     struct No *bloco_senao; // Comandos executados se for falsa
-    struct No *bloco_while; // Comandos dentro de uma repeticao
 
 } No;
 
@@ -83,8 +83,7 @@ No *criar_variavel(char *nome);
 
 No *criar_operacao(TipoNo tipo, No *esquerda, No *direita);
 
-No *criar_lancei(char *nome, No *expressao);
-No *criar_atribuicao(char *nome, No *expressao);
+No *criar_no_nomeado(TipoNo tipo, char *nome, No *expressao);
 No *criar_habla(No *expressao);
 
 No *criar_se_liga(No *condicao, No *bloco_entao, No *bloco_senao);
